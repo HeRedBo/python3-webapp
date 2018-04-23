@@ -6,75 +6,75 @@ import aiomysql
 
 
 # 打印SQL查询语句
-def log(sql,args):
-    logging.info('SQL: %s' %sql)
+def log(sql, args=()):
+    logging.info('SQL: %s' % sql)
+
 
 # 创建一个全局的连接池，每个HTTP请求都从池中获得数据库连接
 @asyncio.coroutine
-def create_pool (loop, **kw):
+def create_pool(loop, **kw):
     logging.info('create database connection pool ...')
     # 全局变量__pool用于存储整个连接池
     global __pool
     __pool = yield from aiomysql.create_pool(
         # **kw参数可以包含所有连接需要用到的关键字参数
-        host       = kw.get('host', 'localhost'),
-        port       = kw.get('port', '3306'),
-        user       = kw['user'],
-        password   = kw['password'],
-        db         = kw['db'],
-        charset    = kw.get('charset','utf8'),
-        autocommit = kw.get('autocommit',True),
-        maxsize    = kw.get('maxsize',10), # 默认最大连接数为10
-        minsize    = kw.get('minsize', 1), # 接收一个event_loop实例
-        loop       = loop
+        host=kw.get('host', 'localhost'),
+        port=kw.get('port', '3306'),
+        user=kw['user'],
+        password=kw['password'],
+        db=kw['db'],
+        charset=kw.get('charset', 'utf8'),
+        autocommit=kw.get('autocommit', True),
+        maxsize=kw.get('maxsize', 10),
+        minsize=kw.get('minsize', 1),
+        loop=loop
     )
+
 
 # 封装SQL SELECT语句为select函数
 @asyncio.coroutine
-def select(sql, args, size=None):
+async def select(sql, args, size=None):
     log(sql, args)
     global __pool
     # -*- yield from 将会调用一个子协程，并直接返回调用的结果
     # yield from从连接池中返回一个连接
-    with (yield from __pool) as conn:
+    async with __pool.get() as conn:
         # DictCursor is a cursor which returns results as a dictionary
-        cur = yield from conn.cursor(aiomysql.DictCursor)
-
-        # 执行SQL语句
-        # SQL语句的占位符为?，MySQL的占位符为%s
-        yield from cur.execute(sql.replace('?','%s'), args or ())
-        # 根据指定返回的size，返回查询的结果
-        if size:
-            rs =  yield from cur.fetchmany(size)  # 返回size条查询结果
-        else:
-            rs =  yield from cur.fetchmany() # 返回所有查询结果
-        yield from cur.close()
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            # 执行SQL语句
+            # SQL语句的占位符为?，MySQL的占位符为%s
+            await cur.execute(sql.replace('?', '%s'), args or ())
+            # 根据指定返回的size，返回查询的结果
+            if size:
+                rs = await cur.fetchmany(size)  # 返回size条查询结果
+            else:
+                rs = await cur.fetchmany()  # 返回所有查询结果
         logging.info('row returned: %s' % len(rs))
         return rs
+
 
 # 封装INSERT, UPDATE, DELETE
 # 语句操作参数一样，所以定义一个通用的执行函数
 # 返回操作影响的行号
 @asyncio.coroutine
-def execute(sql, args, autocommit = True):
+async def execute(sql, args, autocommit = True):
     log(sql,args)
     global __pool
-    with (yield from __pool) as conn:
+    async with __pool.get() as conn:
         if not autocommit:
-            yield from conn.begin()
+            await conn.begin()
         try:
-            # execute类型的SQL操作返回的结果只有行号，所以不需要用DictCursor
-            cur = yield from conn.cursor()
-            yield from cur.execute(sql.replace('?', '%s'), args)
-            affected = cur.rowcount
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute(sql.replace('?', '%s'), args)
+                affected = cur.rowcount
             if not autocommit:
-                yield from conn.commit()
+                await conn.commit()
         except BaseException as e:
-            print(e)
             if not autocommit:
-                yield from comm.rollback()
-            raise RuntimeError(r"MYSQL have same date %s" % args)
+                await conn.rollback()
+            raise
         return affected
+
 
 # 根据输入的参数生成占位符列表
 def create_args_string(num):
@@ -85,42 +85,49 @@ def create_args_string(num):
     # 以','为分隔符，将列表合成字符串
     return ', '.join(L)
 
+
 # 定义Field类，负责保存(数据库)表的字段名和字段类型
 class Field(object):
 
     # 表的字段包含名字、类型、是否为表的主键和默认值
-    def __init__ (self, name, column_type, primary_key, default):
-        self.name        = name
+    def __init__(self, name, column_type, primary_key, default):
+        self.name = name
         self.column_type = column_type
         self.primary_key = primary_key
-        self.default     = default
+        self.default = default
 
     # 当打印(数据库)表时，输出(数据库)表的信息:类名，字段类型和名字
     def __str__(self):
-        return ('<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name))
+        return '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
+
 
 class StringField(Field):
 
-    def __init__(self, name=None, primary_key = False, default=None, ddl='varchar(100)'):
-        super().__init__(name,ddl, primary_key, default)
+    def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
+        super().__init__(name, ddl, primary_key, default)
+
 
 # -*- 定义不同类型的衍生Field -*-
 # -*- 表的不同列的字段的类型不一样
 class BooleanField(Field):
     def __init__(self, name=None, default=False):
-        super().__init__(name,'boolen', False, default)
+        super().__init__(name, 'boolean', False, default)
+
 
 class IntegerField(Field):
     def __init__(self, name=None, primary_key= False, default=0):
-        super().__init__(name,'bigint', False, default)
+        super().__init__(name, 'bigint', False, default)
+
 
 class FloatField(Field):
     def __init__(self, name=None, primary_key=False, default=0.0):
-        super().__init__(name,'real', primary_key, default)
+        super().__init__(name, 'real', primary_key, default)
+
 
 class TextField(Field):
     def __init__(self, name=None, default=None):
-        super().__init__(name,'text', False, default)
+        super().__init__(name, 'text', False, default)
+
 
 # -*-定义Model的元类
 # 所有的元类都继承自type
@@ -132,12 +139,11 @@ class TextField(Field):
 # 将数据库表名保存到__table__中
 # 完成这些工作就可以在Model中定义各种数据库的操作方法
 class ModelMetaclass(type):
-
     # __new__控制__init__的执行，所以在其执行之前
     # cls:代表要__init__的类，此参数在实例化时由Python解释器自动提供(例如下文的User和Model)
     # bases：代表继承父类的集合
     # attrs：类的方法集合
-    def __new__(cls, name, bases, attrs):
+    def __new__(cls,  name, bases, attrs):
          # 排除Model
         if name =='Model':
             return type.__new__(cls, name, bases, attrs)
@@ -146,7 +152,7 @@ class ModelMetaclass(type):
         logging.info('found model: %s (table:%s)' % (name, tableName))
         # 获取Field和主键名
         mappings = dict()
-        fields   = []
+        fields = []
         primaryKey = None
         for k, v in attrs.items():
             # Field 属性
