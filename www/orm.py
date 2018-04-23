@@ -157,7 +157,7 @@ class ModelMetaclass(type):
         for k, v in attrs.items():
             # Field 属性
             if isinstance(v, Field):
-                 # 此处打印的k是类的一个属性，v是这个属性在数据库中对应的Field列表属性
+                # 此处打印的k是类的一个属性，v是这个属性在数据库中对应的Field列表属性
                 logging.info(' found mapping: %s ===> %s' % (k, v))
                 mappings[k] = v
                 # 找到了主键
@@ -169,7 +169,7 @@ class ModelMetaclass(type):
                     primaryKey = k
                 else:
                     fields.append(k)
-         # end for        
+        # end for
 
         if not primaryKey:
             raise StandardError('Primary key not found.')
