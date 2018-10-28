@@ -57,8 +57,8 @@ async def select(sql, args, size=None):
 # 语句操作参数一样，所以定义一个通用的执行函数
 # 返回操作影响的行号
 @asyncio.coroutine
-async def execute(sql, args, autocommit = True):
-    log(sql,args)
+async def execute(sql, args, autocommit=True):
+    log(sql, args)
     global __pool
     async with __pool.get() as conn:
         if not autocommit:
@@ -115,8 +115,8 @@ class BooleanField(Field):
 
 
 class IntegerField(Field):
-    def __init__(self, name=None, primary_key= False, default=0):
-        super().__init__(name, 'bigint', False, default)
+    def __init__(self, name=None, primary_key=False, default=0):
+        super().__init__(name, 'bigint', primary_key, default)
 
 
 class FloatField(Field):
@@ -201,6 +201,7 @@ class ModelMetaclass(type):
 # 基于字典查询形式
 # Model从dict继承，拥有字典的所有功能，同时实现特殊方法__getattr__和__setattr__，能够实现属性操作
 # 实现数据库操作的所有方法，定义为class方法，所有继承自Model都具有数据库操作方法
+
 class Model(dict, metaclass=ModelMetaclass):
 
     def __init__(self, **kw):
@@ -220,29 +221,28 @@ class Model(dict, metaclass=ModelMetaclass):
         return getattr(self, key, None)
 
     def getValueOrDefault(self, key):
-        value = getattr(self,key, None)
+        value = getattr(self, key, None)
         if value is None:
-            field  = self.__mappings__[key]
+            field = self.__mappings__[key]
             if field.default is not None:
                 value = field.default() if callable(field.default) else field.default
                 logging.debug('using default value for %s: %s' % (key, str(value)))
-                setattr(self, key,value)
+                setattr(self, key, value)
         return value
 
     # 类方法有类变量cls传入，从而可以用cls做一些相关的处理。并且有子类继承时，调用该类方法时，传入的类变量cls是子类，而非父类。
     @classmethod
     @asyncio.coroutine
-    def findAll(cls, where =None, args=None, **kw):
+    def findAll(cls, where=None, args=None, **kw):
         'find boject by where clause. '
         sql = [cls.__select__]
         if where:
             sql.append('where')
             sql.append(where)
-
         if args is None:
             args = []
 
-        orderBy = kw.get('orderBy',None)
+        orderBy = kw.get('orderBy', None)
         if orderBy:
             sql.append('order by')
             sql.append(orderBy)

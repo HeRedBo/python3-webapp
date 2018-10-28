@@ -5,8 +5,13 @@ create database awesome;
 
 use awesome;
 
+
+-- 创建用户
+create user 'www-data'@'localhost' identified by 'www-data';
 -- 权限fzhi
-grant select, insert, update, delete on awesome.* to 'www-data'@'localhost' identified by 'www-data';
+grant select, insert, update, delete,create on awesome.* to 'www-data'@'localhost' identified by 'www-data';
+--立即启用修改
+flush  privileges ;
 -- table users
 drop table if exists `users`;
 create table `users`
