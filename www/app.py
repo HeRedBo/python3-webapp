@@ -17,7 +17,6 @@ import orm
 from coroweb import add_routes, add_static
 
 
-
 def init_jinjia2(app, **kw):
     logging.info("init jinjia2...")
 
