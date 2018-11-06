@@ -4,7 +4,6 @@
 """
 configuration
 """
-
 __author__ = 'Red Bo'
 
 import config_default
@@ -12,7 +11,7 @@ import config_default
 
 class Dict(dict):
 
-    def __init__(self,names=(), values=(), **kw):
+    def __init__(self, names=(), values=(), **kw):
         super(Dict, self).__init__(**kw)
         for k, v in zip(names, values):
             self[k] = v
@@ -21,7 +20,7 @@ class Dict(dict):
         try:
             return self[key]
         except KeyError:
-            raise AttributeError(r"'Dict' object has no attribute '%s'" %s)
+            raise AttributeError(r"'Dict' object has no attribute '%s'" %key)
 
     def __setattr__(self, key, value):
         self[key] = value
@@ -44,8 +43,8 @@ def to_dict(d):
         D[k] = to_dict(v) if isinstance(v, dict) else v
     return D
 
-
 configs = config_default.configs
+print(configs)
 try:
     import config_override
     configs = merge(configs, config_override.configs)

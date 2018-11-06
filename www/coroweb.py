@@ -104,18 +104,18 @@ class RequestHandler(object):
         if self._has_var_kw_arg or self._has_named_kw_args or self._required_kw_args:
             if request.method == 'POST':
                 if not request.content_type:
-                    return web.HTTPBadRequest('Missing Content-type.')
-                ct = request.content_type.lover()
-                if ct.startwith('application/json'):
+                    return web.HTTPBadRequest(text='Missing Content-type.')
+                ct = request.content_type.lower()
+                if ct.startswith('application/json'):
                     params = await request.json()
                     if not isinstance(params, dict):
-                        return web.HTTPBadRequest("JSON body must be object")
+                        return web.HTTPBadRequest(text="JSON body must be object")
                     kw = params
-                elif ct.startwith('application/x-www-form-urlencoded') or ct.startwith('multipart/form-data'):
+                elif ct.startswith('application/x-www-form-urlencoded') or ct.startwith('multipart/form-data'):
                     params = await request.post()
                     kw = dict(**params)
                 else:
-                    return web.HTTPBadRequest('Unsupported Content-Type: %s' % request.content_type)
+                    return web.HTTPBadRequest(text='Unsupported Content-Type: %s' % request.content_type)
             if request.method == 'GET':
                 qs = request.query_string
                 if qs:
@@ -135,7 +135,7 @@ class RequestHandler(object):
                 # check named arg:
                 for k, v in request.match_info.items():
                     if k in kw:
-                        logging.warning('Duplicate arg name in named arg and kw args: %s' % k)
+                        logging.warning('Duplicate arg name in named arg and kw args: %s' %k)
                     kw[k] = v
         if self._has_request_arg:
             kw['request'] = request
@@ -143,8 +143,10 @@ class RequestHandler(object):
         if self._required_kw_args:
             for name in self._required_kw_args:
                 if name not in kw:
-                    return web.HTTPBadRequest("Missing argument: %s" % name)
-                logging.info("call with args: %s" % str(kw))
+                    print(kw)
+                    print(name)
+                    return web.HTTPBadRequest(text="Missing argument: %s" % name)
+        logging.info("call with args: %s" % str(kw))
         try:
             r = await self._func(**kw)
             return r
