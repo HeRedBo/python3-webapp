@@ -35,6 +35,7 @@ create table `blogs` (
     `user_id` varchar(50) not null default 0 comment '用户id',
     `user_name` varchar(50) not null default '' comment '用户名称',
     `user_image` varchar(500) not null default '' comment '用户图片',
+    `name` varchar(100) not null default '' comment '文章标题',
     `summary` varchar(200) not null default '' comment '博客摘要',
     `content` mediumtext not null comment '博客内容',
     `created_at` real not null comment '创建时间',
