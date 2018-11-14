@@ -11,7 +11,7 @@ from aiohttp import web
 from coroweb import get, post
 
 from models import User, Comment, Blog, next_id
-from apis import APIError,APIValueError,APIPermissionError
+from apis import APIError,APIValueError,APIPermissionError,Page
 from config import configs
 
 
@@ -22,6 +22,18 @@ _COOKIE_KEY = configs.session.secret
 def check_admin(request):
     if request.__user__ is None or not request.__user__.admin:
         raise APIPermissionError()
+
+
+def get_page_index(page_str):
+    p = 1
+    try:
+        p = int(page_str)
+    except ValueError as e:
+        pass
+    if p < 1:
+        p = 1
+    return p
+
 
 def user2cookie(user, max_age):
     """
@@ -185,10 +197,30 @@ def manage_create_blog():
     }
 
 
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blog.html',
+        'page_index': get_page_index(page)
+    }
+
 @get('/api/blogs/{id}')
 def api_get_blog(*, id):
     blog = yield from Blog.find(id)
     return blog
+
+@get('/api/blogs')
+def api_blogs(*, page = '1'):
+    page_index = get_page_index(page)
+    num = yield from Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    print(p.offset, p.limit)
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs=yield from Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
+
+
 
 @post('/api/blogs')
 def api_create_blog(request, *, name, summary, content):
@@ -200,9 +232,12 @@ def api_create_blog(request, *, name, summary, content):
     if not content or not content.strip():
         raise APIValueError('content','content cannot be empty')
     blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image,
-                name=name.strip(), summary=summary.strip(), content = content.strip())
+                name=name.strip(), summary=summary.strip(), content=content.strip())
     yield from blog.save()
     return blog
+
+
+
 
 
 

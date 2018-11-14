@@ -8,6 +8,7 @@ import aiomysql
 # 打印SQL查询语句
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
+    logging.info('args: %s' % args)
 
 
 # 创建一个全局的连接池，每个HTTP请求都从池中获得数据库连接
@@ -48,7 +49,8 @@ async def select(sql, args, size=None):
             if size:
                 rs = await cur.fetchmany(size)  # 返回size条查询结果
             else:
-                rs = await cur.fetchmany()  # 返回所有查询结果
+                rs = await cur.fetchall()  # 返回所有查询结果
+            await cur.close()
         logging.info('row returned: %s' % len(rs))
         return rs
 
@@ -279,7 +281,6 @@ class Model(dict, metaclass=ModelMetaclass):
         if len(rs) == 0:
             return None
         return cls(**rs[0])
-
 
     @asyncio.coroutine
     def save(self):
