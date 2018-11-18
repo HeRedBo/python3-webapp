@@ -14,13 +14,13 @@
             methods : {
                 submit : function(event){
                     event.preventDefault();
-                    var $form = $('#vm').find('form')
+                    var $form = $('#vm').find('form');
                     $form.postJSON(action, this.$data, function (err, r) {
                         if(err) {
                             $form.showFormError(err);
                         }
                         else{
-                            return window.location.assign('/api/blogs/' + r.id);
+                            return window.location.assign('/manage/blogs');
                         }
                         
                     })
@@ -32,7 +32,7 @@
 
     $(function (params) {
         if(ID) {
-            getJSON('api/blogs/' + ID, function (err, blog) {
+            getJSON('/api/blogs/' + ID, function (err, blog) {
                 if(err) {
                     return fatal(err);
                 }
