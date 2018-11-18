@@ -232,6 +232,24 @@ def manage_blogs(*, page='1'):
         'page_index': get_page_index(page)
     }
 
+
+@get('/manage/users')
+def manage_users(*, page = '1'):
+    return {
+        '__template__': 'manage_users.html',
+        'page_index': get_page_index(page)
+    }
+
+
+@get('/manage/comments')
+def manage_comments(*, page='1'):
+    return {
+        '__template__': 'manage_comments.html',
+        'page_index': get_page_index(page)
+    }
+
+
+
 @get('/api/blogs/{id}')
 def api_get_blog(*, id):
     blog = yield from Blog.find(id)
@@ -282,14 +300,6 @@ def manage_edit_blog(*, id):
     }
 
 
-@get('/manage/users')
-def manage_users(*, page = '1'):
-    return {
-        '__template__': 'manage_users.html',
-        'page_index': get_page_index(page)
-    }
-
-
 @get('/api/users')
 def api_get_users(*, page='1'):
     page_index = get_page_index(page)
@@ -301,6 +311,27 @@ def api_get_users(*, page='1'):
     for u in users:
         u.passwd = '******'
     return dict(page=p, users=users)
+
+
+@get('/api/comments')
+def api_comments(*, page='1'):
+    page_index = get_page_index(page)
+    num = yield from Comment.findNumber("COUNT(id)")
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, comments=())
+    comments = yield from Comment.findAll(orderBy="created_at DESC", limit=(p.offset, p.limit))
+    return dict(page=p, comments=comments)
+
+
+@post('/api/comments/{id}/delete')
+def api_delete_comments(id, request):
+    check_admin(request)
+    c = yield from Comment.find(id)
+    if c is None:
+        raise APIResourceNotFoundError("Comment")
+    yield from c.remove()
+    return dict(id=id)
 
 
 @post("/api/blogs/{id}")
