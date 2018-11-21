@@ -17,6 +17,7 @@ import orm
 from coroweb import add_routes, add_static
 
 from handlers import cookie2user, COOKIE_NAME
+import config
 
 
 def init_jinjia2(app, **kw):
@@ -130,7 +131,11 @@ def datetime_filter(t):
 
 @asyncio.coroutine
 async def init(loop):
-    await orm.create_pool(loop=loop, user='www-data', password='www-data', db='awesome', host='localhost', port=3306,)
+    db_configs = config.configs.db
+    await orm.create_pool(loop=loop, user=db_configs.user,
+                          password=db_configs.password, db=db_configs.database,
+                          host=db_configs.host,port=db_configs.port,)
+
     app = web.Application(loop=loop, middlewares=[
         logger_factory, auth_factory, response_factory,
     ])

@@ -44,7 +44,6 @@ def to_dict(d):
     return D
 
 configs = config_default.configs
-print(configs)
 try:
     import config_override
     configs = merge(configs, config_override.configs)
